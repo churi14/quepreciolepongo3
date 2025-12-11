@@ -7,12 +7,13 @@ import { ArrowRight, ChevronLeft, ChevronRight, User, Users, Utensils, Shirt, Za
 // Componentes Lógicos
 import IngredientList, { Ingredient } from "@/components/IngredientList";
 import LaborCalculator from "@/components/LaborCalculator";
+import TeamLaborCalculator from "@/components/TeamLaborCalculator"; // <--- ASEGURATE DE TENER ESTE ARCHIVO CREADO
 import PriceCalculator from "@/components/PriceCalculator";
 import FixedCosts from "@/components/FixedCosts";
 import Commercialization from "@/components/Commercialization";
 import { generatePDF } from "@/lib/pdfGenerator";
 import LeadCaptureModal from "@/components/LeadCaptureModal";
-import TeamLaborCalculator from "@/components/TeamLaborCalculator";
+
 export default function Home() {
   // --- ESTADOS DE DATOS ---
   const [ingredients, setIngredients] = useState<Ingredient[]>([
@@ -20,7 +21,7 @@ export default function Home() {
   ]);
   const [laborCost, setLaborCost] = useState(0);
   const [fixedCostPerUnit, setFixedCostPerUnit] = useState(0);
-  // ELIMINADO: const [packagingCost, setPackagingCost] = useState(0); 
+  // NOTA: packagingCost eliminado porque ahora es parte de Materiales
   const [sellingExpenses, setSellingExpenses] = useState(0); 
   const [finalPrice, setFinalPrice] = useState(0);
   const [profitAmount, setProfitAmount] = useState(0);
@@ -35,10 +36,9 @@ export default function Home() {
   const addIngredient = (name: string, cost: number) => setIngredients([...ingredients, { id: Date.now(), name, cost }]);
   const removeIngredient = (id: number) => setIngredients(ingredients.filter((item) => item.id !== id));
   
-  // AHORA totalMaterials INCLUYE el packaging
+  // Total incluye Ingredientes + Packaging (cargado en el paso 1)
   const totalMaterials = ingredients.reduce((sum, item) => sum + item.cost, 0);
   
-  // Costo de producción ya NO suma packagingCost aparte
   const productionCost = totalMaterials + laborCost;
   const totalCost = productionCost + fixedCostPerUnit + sellingExpenses;
   
@@ -46,10 +46,14 @@ export default function Home() {
 
   // --- DEFINICIÓN DE PASOS DE LA CALCULADORA ---
   const calculatorSteps = [
-   { title: "Materia Prima y Envases", subtitle: `Ingredientes, Cajas, Bolsas y todo lo que conforma el producto.`, component: <IngredientList ingredients={ingredients} onAdd={addIngredient} onRemove={removeIngredient} /> 
- },
-   { title: "Mano de Obra",  subtitle: businessType === "team"  ? "Gestión de nómina, cargas sociales y externos." : "¿Cuánto vale tu tiempo?", 
-        // CONDICIONAL CLAVE:
+    { 
+        title: "Materia Prima y Envases", 
+        subtitle: `Ingredientes, Cajas, Bolsas y todo lo que conforma el producto.`, 
+        component: <IngredientList ingredients={ingredients} onAdd={addIngredient} onRemove={removeIngredient} /> 
+    },
+    { 
+        title: "Mano de Obra", 
+        subtitle: businessType === "team" ? "Gestión de nómina y equipo." : "¿Cuánto vale tu tiempo?", 
         component: businessType === "team" 
             ? <TeamLaborCalculator onCostChange={setLaborCost} />
             : <LaborCalculator onCostChange={setLaborCost} /> 
@@ -59,11 +63,20 @@ export default function Home() {
         subtitle: "Alquiler, luz, internet y otros gastos mensuales.", 
         component: <FixedCosts onCostChange={setFixedCostPerUnit} /> 
     },
-    { title: "Comercialización", subtitle: "Comisiones de MercadoLibre, Pasarelas y Envíos.", component: <Commercialization productPrice={finalPrice || productionCost * 2} onCostsChange={(selling) => { setSellingExpenses(selling); }} /> },
-    { title: "Precio Final", subtitle: "El momento de la verdad. Definí tu ganancia.", component: <PriceCalculator totalCost={totalCost} onPriceChange={(price, profit) => { setFinalPrice(price); setProfitAmount(profit); }} /> },
+    { 
+        title: "Canal de Venta", 
+        subtitle: "Comisiones de MercadoLibre, Pasarelas e Impuestos.", 
+        // CORRECCIÓN CLAVE: Ahora onCostsChange solo recibe 1 argumento (selling)
+        component: <Commercialization productPrice={finalPrice || productionCost * 2} onCostsChange={(selling) => setSellingExpenses(selling)} /> 
+    },
+    { 
+        title: "Precio Final", 
+        subtitle: "El momento de la verdad. Definí tu ganancia.", 
+        component: <PriceCalculator totalCost={totalCost} onPriceChange={(price, profit) => { setFinalPrice(price); setProfitAmount(profit); }} /> 
+    },
   ];
 
-  // --- RENDER CONTENT INTELIGENTE ---
+  // --- RENDER CONTENT ---
   const renderContent = () => {
     
     // 1. BIENVENIDA
@@ -142,13 +155,11 @@ export default function Home() {
     // 4. CALCULADORA (WIZARD)
     return (
         <div className="flex flex-col h-full animate-in fade-in duration-500">
-            {/* Header del Wizard */}
             <div className="flex justify-between items-center p-6 border-b border-slate-100">
                 <div className="flex flex-col">
                     <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">PASO {calcStep + 1}</span>
                     <span className="text-sm text-slate-400">de {calculatorSteps.length}</span>
                 </div>
-                {/* Barra de progreso mini */}
                 <div className="flex gap-1">
                     {calculatorSteps.map((_, i) => (
                         <div key={i} className={`h-1.5 w-6 rounded-full ${i <= calcStep ? 'bg-blue-500' : 'bg-slate-200'}`} />
@@ -156,22 +167,18 @@ export default function Home() {
                 </div>
             </div>
 
-            {/* Contenido del Paso */}
             <div className="flex-1 overflow-y-auto p-6 md:p-8">
                 <div className="max-w-xl mx-auto space-y-6">
                     <div className="text-center md:text-left">
                         <h2 className="text-2xl font-bold text-slate-900">{calculatorSteps[calcStep].title}</h2>
                         <p className="text-slate-500">{calculatorSteps[calcStep].subtitle}</p>
                     </div>
-                    
-                    {/* El Componente Funcional */}
                     <div className="bg-white p-1">
                         {calculatorSteps[calcStep].component}
                     </div>
                 </div>
             </div>
 
-            {/* Footer Navegación */}
             <div className="p-4 border-t border-slate-100 flex justify-between bg-white rounded-b-3xl">
                 <Button variant="ghost" onClick={() => calcStep > 0 ? setCalcStep(calcStep - 1) : setViewState("profile-industry")}>
                     <ChevronLeft className="mr-1 h-4 w-4" /> Atrás
@@ -189,22 +196,18 @@ export default function Home() {
   };
 
   return (
-    // FONDO GENERAL
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 md:p-6 font-sans">
-      
-      {/* CONTENEDOR FLOTANTE MASTER */}
       <div className="w-full max-w-6xl flex flex-col md:flex-row gap-6 h-[85vh] md:h-[800px]">
         
-        {/* LADO IZQUIERDO: LA CALCULADORA */}
+        {/* IZQUIERDA: CALCULADORA */}
         <div className="flex-1 bg-white rounded-[2rem] shadow-xl overflow-hidden relative flex flex-col ring-1 ring-slate-900/5">
              {renderContent()}
         </div>
 
-        {/* LADO DERECHO: EL TICKET */}
+        {/* DERECHA: TICKET (Corregido: Sin Packaging separado) */}
         {viewState === "calculator" && (
             <div className="hidden md:flex w-80 bg-white rounded-[2rem] shadow-xl flex-col h-full animate-in slide-in-from-right duration-700 ring-1 ring-slate-900/5 overflow-hidden">
                 
-                {/* Header Ticket */}
                 <div className="bg-slate-50 p-6 border-b border-slate-100">
                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                         <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
@@ -212,11 +215,10 @@ export default function Home() {
                     </h3>
                 </div>
 
-                {/* Cuerpo del Ticket */}
                 <div className="p-6 flex-1 overflow-y-auto bg-white">
                     <div className="space-y-4 text-sm">
                         <div className="flex justify-between items-center group">
-                            <span className="text-slate-500 group-hover:text-slate-800 transition-colors">Mat. Prima y Envases</span>
+                            <span className="text-slate-500 group-hover:text-slate-800 transition-colors">Materiales y Envases</span>
                             <span className="font-medium text-slate-900 bg-slate-50 px-2 py-1 rounded border border-slate-100" suppressHydrationWarning>
                                 {formatMoney(totalMaterials)}
                             </span>
@@ -230,11 +232,11 @@ export default function Home() {
                             <span className="font-medium text-slate-900" suppressHydrationWarning>{formatMoney(fixedCostPerUnit)}</span>
                         </div>
                         
-                        {/* Packaging eliminado del render visual porque ya está en materiales */}
+                        {/* SECCIÓN PACKAGING ELIMINADA DEL RENDER VISUAL */}
 
                         {sellingExpenses > 0 && (
                             <div className="flex justify-between items-center bg-indigo-50 p-2 rounded border border-indigo-100">
-                                <span className="text-indigo-600 font-medium">Comisiones</span>
+                                <span className="text-indigo-600 font-medium">Costo de Venta</span>
                                 <span className="font-bold text-indigo-700" suppressHydrationWarning>{formatMoney(sellingExpenses)}</span>
                             </div>
                         )}
@@ -248,7 +250,6 @@ export default function Home() {
                     </div>
                 </div>
 
-                {/* Footer del Ticket */}
                 <div className="p-6 bg-slate-50 border-t border-slate-100">
                     <div className="text-center mb-5">
                         <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Precio Sugerido</span>
