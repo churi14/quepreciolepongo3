@@ -4,10 +4,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, ChevronLeft, ChevronRight, User, Users, Utensils, Shirt, Zap, ShoppingBag, HelpCircle } from "lucide-react";
 
-// Componentes Lógicos
+// Componentes Lógicos (Asegurate que existan en tu carpeta components)
 import IngredientList, { Ingredient } from "@/components/IngredientList";
 import LaborCalculator from "@/components/LaborCalculator";
-import TeamLaborCalculator from "@/components/TeamLaborCalculator"; // <--- ASEGURATE DE TENER ESTE ARCHIVO CREADO
+import TeamLaborCalculator from "@/components/TeamLaborCalculator";
 import PriceCalculator from "@/components/PriceCalculator";
 import FixedCosts from "@/components/FixedCosts";
 import Commercialization from "@/components/Commercialization";
@@ -21,7 +21,6 @@ export default function Home() {
   ]);
   const [laborCost, setLaborCost] = useState(0);
   const [fixedCostPerUnit, setFixedCostPerUnit] = useState(0);
-  // NOTA: packagingCost eliminado porque ahora es parte de Materiales
   const [sellingExpenses, setSellingExpenses] = useState(0); 
   const [finalPrice, setFinalPrice] = useState(0);
   const [profitAmount, setProfitAmount] = useState(0);
@@ -36,15 +35,13 @@ export default function Home() {
   const addIngredient = (name: string, cost: number) => setIngredients([...ingredients, { id: Date.now(), name, cost }]);
   const removeIngredient = (id: number) => setIngredients(ingredients.filter((item) => item.id !== id));
   
-  // Total incluye Ingredientes + Packaging (cargado en el paso 1)
   const totalMaterials = ingredients.reduce((sum, item) => sum + item.cost, 0);
-  
   const productionCost = totalMaterials + laborCost;
   const totalCost = productionCost + fixedCostPerUnit + sellingExpenses;
   
   const formatMoney = (val: number) => val.toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
 
-  // --- DEFINICIÓN DE PASOS DE LA CALCULADORA ---
+  // --- DEFINICIÓN DE PASOS ---
   const calculatorSteps = [
     { 
         title: "Materia Prima y Envases", 
@@ -66,7 +63,6 @@ export default function Home() {
     { 
         title: "Canal de Venta", 
         subtitle: "Comisiones de MercadoLibre, Pasarelas e Impuestos.", 
-        // CORRECCIÓN CLAVE: Ahora onCostsChange solo recibe 1 argumento (selling)
         component: <Commercialization productPrice={finalPrice || productionCost * 2} onCostsChange={(selling) => setSellingExpenses(selling)} /> 
     },
     { 
@@ -79,26 +75,29 @@ export default function Home() {
   // --- RENDER CONTENT ---
   const renderContent = () => {
     
-    // 1. BIENVENIDA
+    // 1. BIENVENIDA (CON LOGO GRANDE)
     if (viewState === "welcome") {
         return (
             <div className="flex flex-col items-center justify-center h-full text-center p-8 animate-in fade-in zoom-in-95 duration-500">
-                <div className="bg-blue-100 p-4 rounded-full mb-6">
-                    <span className="text-4xl">👋</span>
+                {/* LOGO DE LA EMPRESA */}
+                <div className="mb-8">
+                    <img src="/logo.png" alt="Logo En Red" className="h-24 w-auto object-contain mx-auto" />
                 </div>
-                <h1 className="text-4xl font-extrabold text-slate-900 mb-4">
-                    Hola, soy tu Calculadora.
+
+                <h1 className="text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">
+                    Calculadora de Costos
                 </h1>
-                <p className="text-lg text-slate-500 max-w-md mx-auto mb-8">
-                    Vamos a descubrir tus costos reales y cuánto deberías cobrar en solo 5 pasos.
+                <p className="text-lg text-slate-500 max-w-md mx-auto mb-8 font-medium">
+                    Descubrí tus costos reales, optimizá tus márgenes y poné precios inteligentes en 5 pasos.
                 </p>
                 <Button 
                     size="lg" 
-                    className="rounded-full px-8 py-6 text-lg bg-slate-900 hover:bg-slate-800 shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1"
+                    className="rounded-full px-10 py-6 text-lg bg-slate-900 hover:bg-slate-800 shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1"
                     onClick={() => setViewState("profile-type")}
                 >
-                    Comenzar <ArrowRight className="ml-2 h-5 w-5" />
+                    Comenzar Ahora <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
+                <p className="mt-6 text-xs text-slate-400">Powered by En Red Consultora</p>
             </div>
         );
     }
@@ -152,14 +151,20 @@ export default function Home() {
         );
     }
 
-    // 4. CALCULADORA (WIZARD)
+    // 4. CALCULADORA (WIZARD CON HEADER LOGO)
     return (
         <div className="flex flex-col h-full animate-in fade-in duration-500">
+            {/* Header del Wizard */}
             <div className="flex justify-between items-center p-6 border-b border-slate-100">
-                <div className="flex flex-col">
-                    <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">PASO {calcStep + 1}</span>
-                    <span className="text-sm text-slate-400">de {calculatorSteps.length}</span>
+                <div className="flex flex-col items-start">
+                    {/* LOGO PEQUEÑO EN HEADER */}
+                    <img src="/logo.png" alt="Logo" className="h-6 w-auto object-contain mb-1 opacity-80" />
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-blue-600 uppercase tracking-wider">PASO {calcStep + 1}</span>
+                        <span className="text-xs text-slate-400">de {calculatorSteps.length}</span>
+                    </div>
                 </div>
+                
                 <div className="flex gap-1">
                     {calculatorSteps.map((_, i) => (
                         <div key={i} className={`h-1.5 w-6 rounded-full ${i <= calcStep ? 'bg-blue-500' : 'bg-slate-200'}`} />
@@ -204,7 +209,7 @@ export default function Home() {
              {renderContent()}
         </div>
 
-        {/* DERECHA: TICKET (Corregido: Sin Packaging separado) */}
+        {/* DERECHA: TICKET */}
         {viewState === "calculator" && (
             <div className="hidden md:flex w-80 bg-white rounded-[2rem] shadow-xl flex-col h-full animate-in slide-in-from-right duration-700 ring-1 ring-slate-900/5 overflow-hidden">
                 
@@ -231,8 +236,6 @@ export default function Home() {
                             <span className="text-slate-500 group-hover:text-slate-800 transition-colors">Costos Fijos</span>
                             <span className="font-medium text-slate-900" suppressHydrationWarning>{formatMoney(fixedCostPerUnit)}</span>
                         </div>
-                        
-                        {/* SECCIÓN PACKAGING ELIMINADA DEL RENDER VISUAL */}
 
                         {sellingExpenses > 0 && (
                             <div className="flex justify-between items-center bg-indigo-50 p-2 rounded border border-indigo-100">

@@ -52,14 +52,13 @@ export const generatePDF = (data: PDFData) => {
   doc.text(`$ ${data.finalPrice.toLocaleString("es-AR")}`, 20, 70);
 
   // --- SECCIÓN 2: DETALLE DE COSTOS ---
-  // Construimos el cuerpo de la tabla con tipos explícitos para evitar el error
+  // El tipo any[] evita errores estrictos de TS con autotable
   const tableBody: any[] = [
     ...data.ingredients.map(ing => [ing.name, `$ ${ing.cost.toLocaleString("es-AR")}`]),
-    // Fila vacía
     ["", ""],
-    ["Mano de Obra (Tiempo)", `$ ${Math.round(data.laborCost).toLocaleString("es-AR")}`],
+    ["Mano de Obra", `$ ${Math.round(data.laborCost).toLocaleString("es-AR")}`],
     ["Costos Fijos Unitarios", `$ ${Math.round(data.fixedCost).toLocaleString("es-AR")}`],
-    // Fila de total (Aquí estaba el error, usamos 'as any' o estructura simple para safar)
+    // Fila de total con estilo negrita (as const soluciona el error de build)
     [
       { content: "COSTO TOTAL REAL", styles: { fontStyle: "bold" as const } }, 
       { content: `$ ${Math.round(data.totalCost).toLocaleString("es-AR")}`, styles: { fontStyle: "bold" as const } }
@@ -79,7 +78,7 @@ export const generatePDF = (data: PDFData) => {
     },
   });
 
-  // --- SECCIÓN 3: BRANDING ---
+  // --- SECCIÓN 3: BRANDING (PIE DE PÁGINA) ---
   const pageHeight = doc.internal.pageSize.height;
   
   doc.setFillColor(245, 247, 250); 
@@ -88,12 +87,12 @@ export const generatePDF = (data: PDFData) => {
   doc.setFontSize(11);
   doc.setTextColor(0, 0, 0);
   doc.setFont("helvetica", "bold");
-  doc.text("¿Necesitás ayuda para optimizar estos números?", 14, pageHeight - 25);
+  doc.text("En Red Consultora", 14, pageHeight - 25);
   
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(80, 80, 80);
-  doc.text("En Red Consultora - Soluciones IT & Comunicación", 14, pageHeight - 18);
+  doc.text("Optimización de Costos & Soluciones IT", 14, pageHeight - 18);
   doc.text("www.enredconsultora.com.ar", 14, pageHeight - 12);
 
   doc.save("Analisis_de_Costos.pdf");
