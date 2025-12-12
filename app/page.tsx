@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   ArrowRight, ChevronLeft, ChevronRight, User, Users, Utensils, 
   Shirt, Zap, ShoppingBag, HelpCircle, X, Minus, Equal, Divide, 
-  Briefcase, MapPin
+  Briefcase, MapPin, Clock
 } from "lucide-react";
 
-// TUS IMPORTACIONES (Mantenlas igual)
+// TUS IMPORTACIONES
 import IngredientList, { Ingredient } from "@/components/IngredientList";
 import LaborCalculator from "@/components/LaborCalculator";
 import TeamLaborCalculator from "@/components/TeamLaborCalculator";
@@ -40,10 +40,14 @@ export default function Home() {
   const [empBruto, setEmpBruto] = useState(0);
   const [empJobTitle, setEmpJobTitle] = useState("");
   
-  // Selectores nuevos
-  const [selectedZone, setSelectedZone] = useState(1.0); // 1.0 es Zona A
+  // Selectores
+  const [selectedZone, setSelectedZone] = useState(1.0); 
   const [selectedIndustryId, setSelectedIndustryId] = useState("");
-  const [empCategory, setEmpCategory] = useState(""); // ID de la categoría (string)
+  const [empCategory, setEmpCategory] = useState("");
+  
+  // ESTADOS DE JORNADA
+  const [workModality, setWorkModality] = useState<"full" | "part">("full");
+  const [workedHours, setWorkedHours] = useState(176); 
 
   const [empResult, setEmpResult] = useState<"bajo" | "acorde" | "alto" | null>(null);
   const [empDiff, setEmpDiff] = useState(0);
@@ -63,6 +67,7 @@ export default function Home() {
       id: "comercio",
       label: "Comercio (CCT 130/75)",
       type: "monthly",
+      allowPartTime: true,
       presentismo: 0.0833,
       categories: [
         { id: "maestranza_a", label: "Maestranza A", base: 1080000 },
@@ -76,6 +81,7 @@ export default function Home() {
       id: "gastro",
       label: "Gastronómicos (CCT 389/04)",
       type: "monthly",
+      allowPartTime: true,
       presentismo: 0, 
       categories: [
         { id: "peon", label: "Peón / Limpieza", base: 950000 },
@@ -89,6 +95,7 @@ export default function Home() {
       id: "pizza_helar",
       label: "Pizzerías y Heladerías (CCT 24/88)",
       type: "monthly",
+      allowPartTime: true,
       presentismo: 0,
       categories: [
         { id: "ayudante", label: "Ayudante", base: 980000 },
@@ -101,20 +108,22 @@ export default function Home() {
     {
       id: "uocra",
       label: "Construcción (UOCRA - CCT 76/75)",
-      type: "hourly", // Se multiplicará por 176hs para estimar mensual
+      type: "hourly", 
+      allowPartTime: false, 
       presentismo: 0.20,
       categories: [
         { id: "ayudante", label: "Ayudante (Hora)", base: 3833 },
         { id: "medio_oficial", label: "Medio Oficial (Hora)", base: 4200 },
         { id: "oficial", label: "Oficial (Hora)", base: 4600 },
         { id: "oficial_esp", label: "Oficial Especializado (Hora)", base: 5268 },
-        { id: "sereno", label: "Sereno (Mensual)", base: 750000, type: "monthly" }, // Excepción mensual
+        { id: "sereno", label: "Sereno (Mensual)", base: 750000, type: "monthly" }, 
       ]
     },
     {
       id: "uom",
       label: "Metalúrgicos (UOM - CCT 260/75)",
       type: "hourly",
+      allowPartTime: false,
       presentismo: 0,
       categories: [
         { id: "ingresante", label: "Ingresante (Hora)", base: 3900 },
@@ -128,6 +137,7 @@ export default function Home() {
       id: "camioneros",
       label: "Transporte (Camioneros - CCT 40/89)",
       type: "monthly",
+      allowPartTime: false, 
       presentismo: 0,
       categories: [
         { id: "peon", label: "Peón Carga/Descarga", base: 850000 },
@@ -141,6 +151,7 @@ export default function Home() {
       id: "sanidad",
       label: "Sanidad (CCT 122/75)",
       type: "monthly",
+      allowPartTime: true,
       presentismo: 0,
       categories: [
         { id: "mucama", label: "Mucama / Maestranza", base: 980000 },
@@ -154,6 +165,7 @@ export default function Home() {
       id: "uatre",
       label: "Trabajo Rural (UATRE)",
       type: "monthly",
+      allowPartTime: true, 
       presentismo: 0,
       categories: [
         { id: "peon_gral", label: "Peón General", base: 850000 },
@@ -167,6 +179,7 @@ export default function Home() {
       id: "maestranza",
       label: "Limpieza (CCT 281/96)",
       type: "monthly",
+      allowPartTime: true,
       presentismo: 0,
       categories: [
         { id: "operario", label: "Operario", base: 920000 },
@@ -180,6 +193,7 @@ export default function Home() {
       id: "seguridad",
       label: "Seguridad Privada (CCT 507/07)",
       type: "monthly",
+      allowPartTime: false, 
       presentismo: 0,
       categories: [
         { id: "gral", label: "Vigilador General", base: 1100000 },
@@ -191,13 +205,22 @@ export default function Home() {
     },
   ];
 
-  // Helper para buscar categorías según el rubro seleccionado
+  // Helper para buscar categorías
   const activeCategories = useMemo(() => {
     const industry = laborData.find(i => i.id === selectedIndustryId);
     return industry ? industry.categories : [];
   }, [selectedIndustryId]);
+
+  // Resetear estados al cambiar rubro
+  useEffect(() => {
+    const industry = laborData.find(i => i.id === selectedIndustryId);
+    if (industry) {
+        if (!industry.allowPartTime) setWorkModality("full");
+        if ((industry.type === 'hourly')) setWorkedHours(176);
+    }
+  }, [selectedIndustryId]);
   
-  // TUS FUNCIONES (Mantenlas igual)
+  // TUS FUNCIONES
   const addIngredient = (name: string, cost: number) => setIngredients([...ingredients, { id: Date.now(), name, cost }]);
   const removeIngredient = (id: number) => setIngredients(ingredients.filter((item) => item.id !== id));
   
@@ -209,37 +232,53 @@ export default function Home() {
 
   // --- LÓGICA DE CÁLCULO DE SUELDO ---
   const calculateSalaryStatus = () => {
-    // 1. Encontrar Rubro y Categoría
     const industry = laborData.find(i => i.id === selectedIndustryId);
     if (!industry) return;
     const category = industry.categories.find(c => c.id === empCategory);
     if (!category) return;
 
-    // 2. Definir Base de Cálculo (Si es por hora, estimamos 176hs mensuales)
-    let baseAmount = category.base;
+    // 1. Determinar Base Bruta (Full Time)
+    let baseFullTime = category.base;
     
-    // Check si la categoría tiene override de tipo (ej: Sereno en UOCRA es mensual aunque el rubro sea hora)
-    const isHourly = (category.type || industry.type) === "hourly";
+    const isHourlyCategory = (category.type || industry.type) === "hourly";
     
-    if (isHourly) {
-        baseAmount = baseAmount * 176; // Estándar mensual de horas normales
+    let grossReal = 0;
+
+    if (isHourlyCategory) {
+        grossReal = baseFullTime * workedHours;
+    } else {
+        // Es mensual
+        baseFullTime = baseFullTime * selectedZone;
+        baseFullTime = baseFullTime * (1 + industry.presentismo);
+
+        if (workModality === "part" && industry.allowPartTime) {
+            grossReal = baseFullTime * 0.5; // 50% del básico + adicionales
+        } else {
+            grossReal = baseFullTime;
+        }
     }
 
-    // 3. Aplicar Coeficientes
-    const zoneMultiplier = selectedZone;
-    const presentismoMultiplier = 1 + industry.presentismo;
+    // 2. Calcular Neto Teórico
+    const dctoJubilacion = grossReal * 0.11;
+    const dctoPAMI = grossReal * 0.03;
+    
+    // EXCEPCIÓN OBRA SOCIAL (Art 92 Ter LCT para Part Time)
+    let baseCalculoOS = grossReal;
+    if (workModality === "part" && industry.allowPartTime && !isHourlyCategory) {
+        baseCalculoOS = baseFullTime; 
+    }
+    const dctoObraSocial = baseCalculoOS * 0.03;
 
-    // Gross (Bruto) Teórico = Base * Zona * Presentismo
-    const theoreticalGross = baseAmount * zoneMultiplier * presentismoMultiplier;
+    const theoreticalNet = grossReal - dctoJubilacion - dctoPAMI - dctoObraSocial;
 
-    // 4. Calcular Neto Teórico (Bolsillo)
-    // Descuentos de Ley Empleado: 11% Jub + 3% PAMI + 3% OS = 17% Total
-    const theoreticalNet = theoreticalGross * 0.83;
-
-    // 5. Comparar
-    const lowerBound = theoreticalNet * 0.90; // Tolerancia 10%
+    // 3. Comparar
+    const lowerBound = theoreticalNet * 0.90; 
     const upperBound = theoreticalNet * 1.10;
-    const diffPercentage = ((empNeto - theoreticalNet) / theoreticalNet) * 100;
+    
+    let diffPercentage = 0;
+    if (theoreticalNet > 0) {
+        diffPercentage = ((empNeto - theoreticalNet) / theoreticalNet) * 100;
+    }
     
     setEmpDiff(diffPercentage);
 
@@ -256,6 +295,7 @@ export default function Home() {
         puesto: empJobTitle,
         rubro: industry.label,
         categoria: category.label,
+        modalidad: workModality,
         zona: selectedZone,
         bruto_ingresado: empBruto,
         neto_ingresado: empNeto,
@@ -266,7 +306,7 @@ export default function Home() {
     console.log("GUARDANDO DATOS:", dataToSave);
   };
 
-  // --- PASOS CALCULADORA DE COSTOS (Mismo código) ---
+  // --- PASOS CALCULADORA DE COSTOS ---
   const calculatorSteps = [
     { title: "Materia Prima", subtitle: `Ingredientes y packaging.`, component: <IngredientList ingredients={ingredients} onAdd={addIngredient} onRemove={removeIngredient} /> },
     { title: "Mano de Obra", subtitle: businessType === "team" ? "Nómina y equipo." : "¿Cuánto vale tu tiempo?", component: businessType === "team" ? <TeamLaborCalculator onCostChange={setLaborCost} /> : <LaborCalculator onCostChange={setLaborCost} /> },
@@ -322,7 +362,7 @@ export default function Home() {
         );
     }
 
-    // B. INDUSTRIA (Mantenlo igual)
+    // B. INDUSTRIA
     if (viewState === "profile-industry") {
         const industries = [
             { id: "gastro", label: "Gastronomía", icon: <Utensils className="h-5 w-5"/> },
@@ -349,8 +389,11 @@ export default function Home() {
         );
     }
 
-    // C. VISTA: CALCULADORA DE SUELDO (CON NUEVOS DATOS)
+    // C. VISTA: CALCULADORA DE SUELDO
     if (viewState === "employee-calculator") {
+        const selectedIndustry = laborData.find(i => i.id === selectedIndustryId);
+        const isHourly = selectedIndustry?.type === 'hourly';
+
         return (
             <div className="flex flex-col h-full animate-in fade-in duration-500">
                 <div className="flex items-center px-6 py-4 border-b border-slate-100 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
@@ -412,7 +455,7 @@ export default function Home() {
                                 </div>
                             </div>
 
-                            {/* SELECTOR DE ZONA GEOGRÁFICA */}
+                            {/* SELECTOR DE ZONA Y RUBRO */}
                             <div>
                                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1 flex items-center gap-1">
                                     <MapPin className="w-3 h-3" /> Zona del País <span className="text-red-500">*</span>
@@ -428,7 +471,6 @@ export default function Home() {
                                 </select>
                             </div>
 
-                            {/* SELECTOR DE RUBRO (INDUSTRIA) */}
                             <div>
                                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
                                     Rubro / Convenio <span className="text-red-500">*</span>
@@ -438,7 +480,7 @@ export default function Home() {
                                     value={selectedIndustryId}
                                     onChange={(e) => {
                                         setSelectedIndustryId(e.target.value);
-                                        setEmpCategory(""); // Resetear categoría al cambiar rubro
+                                        setEmpCategory(""); 
                                     }}
                                 >
                                     <option value="">Seleccioná tu rubro...</option>
@@ -447,8 +489,51 @@ export default function Home() {
                                     ))}
                                 </select>
                             </div>
+                            
+                            {/* SELECTOR DE MODALIDAD (CONDICIONAL) */}
+                            {selectedIndustry && !isHourly && selectedIndustry.allowPartTime && (
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                                        Modalidad de Contratación
+                                    </label>
+                                    <div className="flex gap-4">
+                                        <button 
+                                            onClick={() => setWorkModality("full")}
+                                            className={`flex-1 p-3 rounded-xl border text-sm font-medium transition-all ${workModality === "full" ? "bg-slate-900 text-white border-slate-900" : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"}`}
+                                        >
+                                            Jornada Completa
+                                        </button>
+                                        <button 
+                                            onClick={() => setWorkModality("part")}
+                                            className={`flex-1 p-3 rounded-xl border text-sm font-medium transition-all ${workModality === "part" ? "bg-slate-900 text-white border-slate-900" : "bg-white border-slate-200 text-slate-500 hover:border-slate-300"}`}
+                                        >
+                                            Media Jornada
+                                        </button>
+                                    </div>
+                                    {workModality === "part" && (
+                                        <p className="text-[10px] text-blue-500 mt-1 font-medium bg-blue-50 inline-block px-2 py-0.5 rounded">
+                                            ℹ️ Obra Social se calcula sobre sueldo completo (Ley 26.474)
+                                        </p>
+                                    )}
+                                </div>
+                            )}
 
-                            {/* SELECTOR DE CATEGORÍA (DINÁMICO) */}
+                            {/* INPUT DE HORAS (CONDICIONAL PARA UOCRA/UOM) */}
+                            {isHourly && (
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-700 uppercase mb-1 flex items-center gap-1">
+                                        <Clock className="w-3 h-3" /> Horas Trabajadas (Mes) <span className="text-red-500">*</span>
+                                    </label>
+                                    <input 
+                                        type="number"
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                                        value={workedHours}
+                                        onChange={(e) => setWorkedHours(Number(e.target.value))}
+                                    />
+                                    <p className="text-[10px] text-slate-400 mt-1">Estándar mensual de convenio: 176 horas.</p>
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
                                     Categoría <span className="text-red-500">*</span>
@@ -464,7 +549,8 @@ export default function Home() {
                                     </option>
                                     {activeCategories.map((cat) => (
                                         <option key={cat.id} value={cat.id}>
-                                            {cat.label} ({formatMoney(cat.base)} { (cat.type || laborData.find(i=>i.id===selectedIndustryId)?.type) === 'hourly' ? '/ hora' : '/ mes' })
+                                            {/* AQUÍ ESTÁ EL CAMBIO: SOLO MOSTRAMOS EL NOMBRE */}
+                                            {cat.label}
                                         </option>
                                     ))}
                                 </select>
@@ -501,20 +587,29 @@ export default function Home() {
                                 
                                 <p className="text-slate-600 leading-relaxed text-sm">
                                     {(() => {
-                                        // Recalcular para el texto (esto es solo visualización)
                                         const ind = laborData.find(i => i.id === selectedIndustryId);
                                         const cat = ind?.categories.find(c => c.id === empCategory);
                                         if(!cat || !ind) return "";
-
+                                        
+                                        // Recalcular para el texto final (misma lógica que arriba)
                                         let base = cat.base;
-                                        if((cat.type || ind.type) === "hourly") base *= 176;
-                                        const theoretical = base * selectedZone * (1 + ind.presentismo) * 0.83;
+                                        if((cat.type || ind.type) === "hourly") base *= workedHours;
+                                        else base = base * selectedZone * (1 + ind.presentismo);
+
+                                        let grossCalc = base;
+                                        let baseOS = base;
+                                        if(workModality === 'part' && ind.allowPartTime && ind.type !== 'hourly') {
+                                            grossCalc = base * 0.5;
+                                            // OS sobre el 100% (base)
+                                        }
+
+                                        const netCalc = grossCalc - (grossCalc * 0.14) - (baseOS * 0.03);
 
                                         return empResult === 'bajo' 
-                                            ? `Según tu categoría y zona, deberías cobrar aprox ${formatMoney(theoretical)} en mano. Estás un ${Math.abs(empDiff).toFixed(1)}% abajo.` 
+                                            ? `Deberías cobrar aprox ${formatMoney(netCalc)} en mano (Jornada ${workModality === 'full' ? 'Completa' : 'Media'}). Estás un ${Math.abs(empDiff).toFixed(1)}% abajo.` 
                                             : empResult === 'acorde'
-                                            ? `Tu sueldo coincide con el convenio (${formatMoney(theoretical)} aprox).`
-                                            : `Estás cobrando un ${empDiff.toFixed(1)}% por encima del convenio.`;
+                                            ? `Tu sueldo coincide con el convenio (${formatMoney(netCalc)} aprox).`
+                                            : `Estás un ${empDiff.toFixed(1)}% por encima del convenio.`;
                                     })()}
                                 </p>
                             </div>
