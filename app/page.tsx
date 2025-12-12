@@ -76,7 +76,7 @@ export default function Home() {
   const renderContent = () => {
     
     // 1. BIENVENIDA (CON LOGO GRANDE)
-   // 1. BIENVENIDA (LOGO QUE PRECIO + FOOTER EN RED)
+   // 1. BIENVENIDA
     if (viewState === "welcome") {
         return (
             <div className="flex flex-col h-full bg-white animate-in fade-in zoom-in-95 duration-500 relative">
@@ -84,7 +84,7 @@ export default function Home() {
                 {/* CONTENIDO CENTRADO */}
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
                     
-                    {/* LOGO PRINCIPAL (Calculadora Azul) */}
+                    {/* LOGO PRINCIPAL */}
                     <div className="mb-10 transform hover:scale-105 transition-transform duration-500">
                         <img 
                             src="/logo.png" 
@@ -111,7 +111,7 @@ export default function Home() {
                     </Button>
                 </div>
 
-                {/* FOOTER (Powered By En Red) */}
+                {/* FOOTER: POWERED BY EN RED (Nuevo) */}
                 <div className="p-6 text-center">
                     <p className="text-xs text-slate-400 font-medium tracking-wide uppercase opacity-70">
                         Powered by <span className="font-bold text-slate-600">En Red Consultora</span>
