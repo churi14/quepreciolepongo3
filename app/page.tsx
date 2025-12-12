@@ -76,28 +76,47 @@ export default function Home() {
   const renderContent = () => {
     
     // 1. BIENVENIDA (CON LOGO GRANDE)
+   // 1. BIENVENIDA (LOGO QUE PRECIO + FOOTER EN RED)
     if (viewState === "welcome") {
         return (
-            <div className="flex flex-col items-center justify-center h-full text-center p-8 animate-in fade-in zoom-in-95 duration-500">
-                {/* LOGO DE LA EMPRESA */}
-                <div className="mb-8">
-                    <img src="/logo.png" alt="Logo En Red" className="h-24 w-auto object-contain mx-auto" />
+            <div className="flex flex-col h-full bg-white animate-in fade-in zoom-in-95 duration-500 relative">
+                
+                {/* CONTENIDO CENTRADO */}
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                    
+                    {/* LOGO PRINCIPAL (Calculadora Azul) */}
+                    <div className="mb-10 transform hover:scale-105 transition-transform duration-500">
+                        <img 
+                            src="/logo.png" 
+                            alt="Que Precio Le Pongo" 
+                            className="h-20 md:h-24 w-auto object-contain mx-auto drop-shadow-sm" 
+                        />
+                    </div>
+
+                    <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-6 tracking-tight max-w-2xl leading-tight">
+                        Dejá de adivinar precios.<br/>
+                        Empezá a ganar plata.
+                    </h1>
+                    
+                    <p className="text-lg md:text-xl text-slate-500 max-w-lg mx-auto mb-10 font-medium leading-relaxed">
+                        Calculá tus costos reales, optimizá márgenes y descubrí tu precio ideal en 5 pasos simples.
+                    </p>
+                    
+                    <Button 
+                        size="lg" 
+                        className="rounded-full px-12 py-7 text-lg bg-blue-600 hover:bg-blue-700 shadow-xl hover:shadow-2xl hover:shadow-blue-200 transition-all hover:-translate-y-1 font-bold"
+                        onClick={() => setViewState("profile-type")}
+                    >
+                        Empezar Ahora <ArrowRight className="ml-2 h-5 w-5" />
+                    </Button>
                 </div>
 
-                <h1 className="text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">
-                    Calculadora de Costos
-                </h1>
-                <p className="text-lg text-slate-500 max-w-md mx-auto mb-8 font-medium">
-                    Descubrí tus costos reales, optimizá tus márgenes y poné precios inteligentes en 5 pasos.
-                </p>
-                <Button 
-                    size="lg" 
-                    className="rounded-full px-10 py-6 text-lg bg-slate-900 hover:bg-slate-800 shadow-xl hover:shadow-2xl transition-all hover:-translate-y-1"
-                    onClick={() => setViewState("profile-type")}
-                >
-                    Comenzar Ahora <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-                <p className="mt-6 text-xs text-slate-400">Powered by En Red Consultora</p>
+                {/* FOOTER (Powered By En Red) */}
+                <div className="p-6 text-center">
+                    <p className="text-xs text-slate-400 font-medium tracking-wide uppercase opacity-70">
+                        Powered by <span className="font-bold text-slate-600">En Red Consultora</span>
+                    </p>
+                </div>
             </div>
         );
     }
