@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   ArrowRight, ChevronLeft, ChevronRight, User, Users, Utensils, 
   Shirt, Zap, ShoppingBag, HelpCircle, X, Minus, Equal, Divide, 
-  Briefcase
+  Briefcase, MapPin
 } from "lucide-react";
 
-// TUS IMPORTACIONES (Verifica las rutas)
+// TUS IMPORTACIONES (Mantenlas igual)
 import IngredientList, { Ingredient } from "@/components/IngredientList";
 import LaborCalculator from "@/components/LaborCalculator";
 import TeamLaborCalculator from "@/components/TeamLaborCalculator";
@@ -35,7 +35,169 @@ export default function Home() {
   const [industry, setIndustry] = useState(""); 
   const [calcStep, setCalcStep] = useState(0);
 
-  // --- TUS FUNCIONES ---
+  // --- ESTADOS DE EMPLEADO ---
+  const [empNeto, setEmpNeto] = useState(0);
+  const [empBruto, setEmpBruto] = useState(0);
+  const [empJobTitle, setEmpJobTitle] = useState("");
+  
+  // Selectores nuevos
+  const [selectedZone, setSelectedZone] = useState(1.0); // 1.0 es Zona A
+  const [selectedIndustryId, setSelectedIndustryId] = useState("");
+  const [empCategory, setEmpCategory] = useState(""); // ID de la categoría (string)
+
+  const [empResult, setEmpResult] = useState<"bajo" | "acorde" | "alto" | null>(null);
+  const [empDiff, setEmpDiff] = useState(0);
+
+  // --- DATOS MAESTROS (RUBROS, ZONAS, CATEGORÍAS) ---
+  
+  const zones = [
+    { id: 1.0, label: "Zona A - Resto del País (Estándar)" },
+    { id: 1.2, label: "Zona B - Patagonia Norte (Río Negro, Neuquén)" },
+    { id: 1.5, label: "Zona C - Patagonia Sur (Chubut, Santa Cruz)" },
+    { id: 2.0, label: "Zona Austral - Tierra del Fuego" },
+  ];
+
+  // Base de datos completa Diciembre 2025
+  const laborData = [
+    {
+      id: "comercio",
+      label: "Comercio (CCT 130/75)",
+      type: "monthly",
+      presentismo: 0.0833,
+      categories: [
+        { id: "maestranza_a", label: "Maestranza A", base: 1080000 },
+        { id: "admin_a", label: "Administrativo A", base: 1105000 },
+        { id: "cajero_b", label: "Cajero B", base: 1115000 },
+        { id: "vendedor_b", label: "Vendedor B", base: 1135000 },
+        { id: "aux_esp_a", label: "Auxiliar Especializado A", base: 1120000 },
+      ]
+    },
+    {
+      id: "gastro",
+      label: "Gastronómicos (CCT 389/04)",
+      type: "monthly",
+      presentismo: 0, 
+      categories: [
+        { id: "peon", label: "Peón / Limpieza", base: 950000 },
+        { id: "mozo", label: "Mozo / Camarero", base: 1050000 },
+        { id: "ayudante_cocina", label: "Ayudante de Cocina", base: 1020000 },
+        { id: "cocinero", label: "Cocinero (Jefe Partida)", base: 1150000 },
+        { id: "recepcionista", label: "Recepcionista", base: 1080000 },
+      ]
+    },
+    {
+      id: "pizza_helar",
+      label: "Pizzerías y Heladerías (CCT 24/88)",
+      type: "monthly",
+      presentismo: 0,
+      categories: [
+        { id: "ayudante", label: "Ayudante", base: 980000 },
+        { id: "dependiente", label: "Dependiente Mostrador", base: 1050000 },
+        { id: "maestro", label: "Maestro Pizzero / Heladero", base: 1250000 },
+        { id: "cajero", label: "Cajero", base: 1020000 },
+        { id: "encargado", label: "Encargado", base: 1300000 },
+      ]
+    },
+    {
+      id: "uocra",
+      label: "Construcción (UOCRA - CCT 76/75)",
+      type: "hourly", // Se multiplicará por 176hs para estimar mensual
+      presentismo: 0.20,
+      categories: [
+        { id: "ayudante", label: "Ayudante (Hora)", base: 3833 },
+        { id: "medio_oficial", label: "Medio Oficial (Hora)", base: 4200 },
+        { id: "oficial", label: "Oficial (Hora)", base: 4600 },
+        { id: "oficial_esp", label: "Oficial Especializado (Hora)", base: 5268 },
+        { id: "sereno", label: "Sereno (Mensual)", base: 750000, type: "monthly" }, // Excepción mensual
+      ]
+    },
+    {
+      id: "uom",
+      label: "Metalúrgicos (UOM - CCT 260/75)",
+      type: "hourly",
+      presentismo: 0,
+      categories: [
+        { id: "ingresante", label: "Ingresante (Hora)", base: 3900 },
+        { id: "op_calificado", label: "Operario Calificado (Hora)", base: 4400 },
+        { id: "medio_oficial", label: "Medio Oficial (Hora)", base: 4900 },
+        { id: "oficial", label: "Oficial (Hora)", base: 5300 },
+        { id: "oficial_multiple", label: "Oficial Múltiple (Hora)", base: 5800 },
+      ]
+    },
+    {
+      id: "camioneros",
+      label: "Transporte (Camioneros - CCT 40/89)",
+      type: "monthly",
+      presentismo: 0,
+      categories: [
+        { id: "peon", label: "Peón Carga/Descarga", base: 850000 },
+        { id: "reparto", label: "Chofer Reparto", base: 920000 },
+        { id: "primera", label: "Chofer Primera", base: 1050000 },
+        { id: "larga", label: "Larga Distancia", base: 1100000 },
+        { id: "admin", label: "Administrativo Primera", base: 980000 },
+      ]
+    },
+    {
+      id: "sanidad",
+      label: "Sanidad (CCT 122/75)",
+      type: "monthly",
+      presentismo: 0,
+      categories: [
+        { id: "mucama", label: "Mucama / Maestranza", base: 980000 },
+        { id: "admin", label: "Administrativo", base: 1050000 },
+        { id: "enf_piso", label: "Enfermero/a Piso", base: 1180000 },
+        { id: "enf_esp", label: "Enfermero/a Especializado", base: 1350000 },
+        { id: "camillero", label: "Camillero", base: 1020000 },
+      ]
+    },
+    {
+      id: "uatre",
+      label: "Trabajo Rural (UATRE)",
+      type: "monthly",
+      presentismo: 0,
+      categories: [
+        { id: "peon_gral", label: "Peón General", base: 850000 },
+        { id: "peon_esp", label: "Peón Especializado", base: 890000 },
+        { id: "tractorista", label: "Tractorista", base: 980000 },
+        { id: "capataz", label: "Capataz", base: 1100000 },
+        { id: "encargado", label: "Encargado", base: 1200000 },
+      ]
+    },
+    {
+      id: "maestranza",
+      label: "Limpieza (CCT 281/96)",
+      type: "monthly",
+      presentismo: 0,
+      categories: [
+        { id: "operario", label: "Operario", base: 920000 },
+        { id: "op_esp", label: "Operario Especializado", base: 980000 },
+        { id: "oficial", label: "Oficial", base: 1050000 },
+        { id: "of_esp", label: "Oficial Especializado", base: 1100000 },
+        { id: "coordinador", label: "Coordinador", base: 1250000 },
+      ]
+    },
+    {
+      id: "seguridad",
+      label: "Seguridad Privada (CCT 507/07)",
+      type: "monthly",
+      presentismo: 0,
+      categories: [
+        { id: "gral", label: "Vigilador General", base: 1100000 },
+        { id: "bombero", label: "Vigilador Bombero", base: 1150000 },
+        { id: "monitoreo", label: "Operador Monitoreo", base: 1150000 },
+        { id: "jefe", label: "Jefe de Servicio", base: 1300000 },
+        { id: "vip", label: "Custodio VIP", base: 1450000 },
+      ]
+    },
+  ];
+
+  // Helper para buscar categorías según el rubro seleccionado
+  const activeCategories = useMemo(() => {
+    const industry = laborData.find(i => i.id === selectedIndustryId);
+    return industry ? industry.categories : [];
+  }, [selectedIndustryId]);
+  
+  // TUS FUNCIONES (Mantenlas igual)
   const addIngredient = (name: string, cost: number) => setIngredients([...ingredients, { id: Date.now(), name, cost }]);
   const removeIngredient = (id: number) => setIngredients(ingredients.filter((item) => item.id !== id));
   
@@ -45,33 +207,39 @@ export default function Home() {
   
   const formatMoney = (val: number) => val.toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
 
-  // --- ESTADOS DE EMPLEADO ---
-  const [empNeto, setEmpNeto] = useState(0);
-  const [empBruto, setEmpBruto] = useState(0);
-  const [empJobTitle, setEmpJobTitle] = useState("");
-  const [empCategory, setEmpCategory] = useState("");
-  const [empResult, setEmpResult] = useState<"bajo" | "acorde" | "alto" | null>(null);
-  const [empDiff, setEmpDiff] = useState(0);
-
-  // BASE DE DATOS DE CONVENIOS
-  const salaryCategories = [
-    { id: "comercio_admin_a", label: "Comercio - Administrativo A", amount: 950000 },
-    { id: "comercio_vendedor_b", label: "Comercio - Vendedor B", amount: 980000 },
-    { id: "uocra_oficial", label: "Construcción - Oficial", amount: 1100000 },
-    { id: "gastronomico_mozo", label: "Gastronómico - Mozo", amount: 850000 },
-    { id: "sanidad_enfermero", label: "Sanidad - Enfermero", amount: 1050000 },
-  ];
-  
-  // Función para calcular y GUARDAR DATOS
+  // --- LÓGICA DE CÁLCULO DE SUELDO ---
   const calculateSalaryStatus = () => {
-    const selectedCat = salaryCategories.find(c => c.id === empCategory);
-    if (!selectedCat) return;
+    // 1. Encontrar Rubro y Categoría
+    const industry = laborData.find(i => i.id === selectedIndustryId);
+    if (!industry) return;
+    const category = industry.categories.find(c => c.id === empCategory);
+    if (!category) return;
 
-    const referenceSalary = selectedCat.amount;
+    // 2. Definir Base de Cálculo (Si es por hora, estimamos 176hs mensuales)
+    let baseAmount = category.base;
+    
+    // Check si la categoría tiene override de tipo (ej: Sereno en UOCRA es mensual aunque el rubro sea hora)
+    const isHourly = (category.type || industry.type) === "hourly";
+    
+    if (isHourly) {
+        baseAmount = baseAmount * 176; // Estándar mensual de horas normales
+    }
 
-    const lowerBound = referenceSalary * 0.90; 
-    const upperBound = referenceSalary * 1.10;
-    const diffPercentage = ((empNeto - referenceSalary) / referenceSalary) * 100;
+    // 3. Aplicar Coeficientes
+    const zoneMultiplier = selectedZone;
+    const presentismoMultiplier = 1 + industry.presentismo;
+
+    // Gross (Bruto) Teórico = Base * Zona * Presentismo
+    const theoreticalGross = baseAmount * zoneMultiplier * presentismoMultiplier;
+
+    // 4. Calcular Neto Teórico (Bolsillo)
+    // Descuentos de Ley Empleado: 11% Jub + 3% PAMI + 3% OS = 17% Total
+    const theoreticalNet = theoreticalGross * 0.83;
+
+    // 5. Comparar
+    const lowerBound = theoreticalNet * 0.90; // Tolerancia 10%
+    const upperBound = theoreticalNet * 1.10;
+    const diffPercentage = ((empNeto - theoreticalNet) / theoreticalNet) * 100;
     
     setEmpDiff(diffPercentage);
 
@@ -83,19 +251,22 @@ export default function Home() {
         setEmpResult("acorde");
     }
 
-    // 3. CAPTURA DE DATOS (Aquí es donde guardarías en la Base de Datos)
+    // Guardar en DB (Simulado)
     const dataToSave = {
         puesto: empJobTitle,
-        bruto: empBruto,
-        neto: empNeto,
-        categoria: selectedCat.label,
+        rubro: industry.label,
+        categoria: category.label,
+        zona: selectedZone,
+        bruto_ingresado: empBruto,
+        neto_ingresado: empNeto,
+        neto_teorico: theoreticalNet.toFixed(2),
         diferencia: diffPercentage.toFixed(2),
         fecha: new Date().toISOString()
     };
-    console.log("NUEVO DATO CAPTURADO PARA DB:", dataToSave);
+    console.log("GUARDANDO DATOS:", dataToSave);
   };
 
-  // --- PASOS CALCULADORA DE COSTOS ---
+  // --- PASOS CALCULADORA DE COSTOS (Mismo código) ---
   const calculatorSteps = [
     { title: "Materia Prima", subtitle: `Ingredientes y packaging.`, component: <IngredientList ingredients={ingredients} onAdd={addIngredient} onRemove={removeIngredient} /> },
     { title: "Mano de Obra", subtitle: businessType === "team" ? "Nómina y equipo." : "¿Cuánto vale tu tiempo?", component: businessType === "team" ? <TeamLaborCalculator onCostChange={setLaborCost} /> : <LaborCalculator onCostChange={setLaborCost} /> },
@@ -104,11 +275,10 @@ export default function Home() {
     { title: "Precio Final", subtitle: "Definí tu ganancia.", component: <PriceCalculator totalCost={totalCost} onPriceChange={(price, profit) => { setFinalPrice(price); setProfitAmount(profit); }} /> },
   ];
 
-  // --- RENDER CONTENT (CONTENIDO DE LA TARJETA) ---
+  // --- RENDER CONTENT ---
   const renderCardContent = () => {
     
-    // A. PERFIL: TIPO DE NEGOCIO
-   // A. PERFIL: TIPO DE NEGOCIO
+    // A. PERFIL
     if (viewState === "profile-type") {
         return (
             <div className="flex flex-col h-full items-center justify-center p-8 animate-in slide-in-from-right-8 duration-500">
@@ -116,10 +286,7 @@ export default function Home() {
                     ¿Cuál es tu situación actual?
                 </h2>
                 
-                {/* CAMBIO CLAVE: Aumenté 'max-w-md' a 'max-w-4xl' para que se estiren bien a lo ancho */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-4xl">
-                    
-                    {/* 1. BOTÓN SOLO (Arriba Izquierda - Estirado) */}
                     <button onClick={() => { setBusinessType("solo"); setViewState("profile-industry"); }} className="group p-6 border border-slate-200 rounded-2xl hover:border-blue-500 hover:bg-blue-50/30 transition-all flex items-center gap-4 bg-white shadow-sm hover:shadow-md">
                         <div className="bg-blue-100 p-4 rounded-xl shrink-0">
                             <User className="h-8 w-8 text-blue-600" />
@@ -130,7 +297,6 @@ export default function Home() {
                         </div>
                     </button>
 
-                    {/* 2. BOTÓN PYME (Arriba Derecha - Estirado) */}
                     <button onClick={() => { setBusinessType("team"); setViewState("profile-industry"); }} className="group p-6 border border-slate-200 rounded-2xl hover:border-purple-500 hover:bg-purple-50/30 transition-all flex items-center gap-4 bg-white shadow-sm hover:shadow-md">
                         <div className="bg-purple-100 p-4 rounded-xl shrink-0">
                             <Users className="h-8 w-8 text-purple-600" />
@@ -141,7 +307,6 @@ export default function Home() {
                         </div>
                     </button>
 
-                    {/* 3. BOTÓN EMPLEADO (Abajo - Ocupa todo el ancho) */}
                     <button onClick={() => setViewState("employee-calculator")} className="group p-6 border-2 border-slate-100 rounded-2xl hover:border-green-500 hover:bg-green-50/30 transition-all flex items-center gap-4 bg-white md:col-span-2 shadow-sm hover:shadow-md">
                         <div className="bg-green-100 p-4 rounded-xl shrink-0 group-hover:scale-110 transition-transform">
                             <Briefcase className="h-8 w-8 text-green-600" />
@@ -151,14 +316,13 @@ export default function Home() {
                             <p className="text-sm text-slate-500">Quiero saber si gano bien.</p>
                         </div>
                     </button>
-
                 </div>
                 <Button variant="ghost" className="mt-12 text-slate-400 hover:text-slate-600 text-sm" onClick={() => setViewState("welcome")}>← Volver</Button>
             </div>
         );
     }
 
-    // B. PERFIL: INDUSTRIA
+    // B. INDUSTRIA (Mantenlo igual)
     if (viewState === "profile-industry") {
         const industries = [
             { id: "gastro", label: "Gastronomía", icon: <Utensils className="h-5 w-5"/> },
@@ -185,7 +349,7 @@ export default function Home() {
         );
     }
 
-    // C. VISTA: CALCULADORA DE SUELDO EMPLEADO (CORREGIDA)
+    // C. VISTA: CALCULADORA DE SUELDO (CON NUEVOS DATOS)
     if (viewState === "employee-calculator") {
         return (
             <div className="flex flex-col h-full animate-in fade-in duration-500">
@@ -193,18 +357,16 @@ export default function Home() {
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Calculadora de Sueldo</span>
                 </div>
                 
-                {/* Se eliminó 'overflow-y-auto' para que crezca según el contenido */}
                 <div className="flex-1 p-6 md:p-10">
                     <div className="max-w-xl mx-auto w-full space-y-6">
                         <div className="text-center mb-6">
                             <h2 className="text-2xl font-black text-slate-900">Chequeá tu Sueldo</h2>
-                            <p className="text-sm text-slate-500 font-medium">Compará lo que ganás con el convenio.</p>
+                            <p className="text-sm text-slate-500 font-medium">Datos actualizados a Diciembre 2025.</p>
                         </div>
 
                         {/* FORMULARIO */}
                         <div className="space-y-4">
                             <div>
-                                {/* Aclaración de Obligatorio */}
                                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
                                     Tu Puesto <span className="text-red-500 normal-case ml-1">(Obligatorio) *</span>
                                 </label>
@@ -220,7 +382,6 @@ export default function Home() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Sueldo Bruto</label>
-                                    {/* Input con formato de miles */}
                                     <input 
                                         type="text"
                                         inputMode="numeric"
@@ -229,9 +390,7 @@ export default function Home() {
                                         value={empBruto > 0 ? empBruto.toLocaleString("es-AR") : ""}
                                         onChange={(e) => {
                                             const rawValue = e.target.value.replace(/\./g, "");
-                                            if (/^\d*$/.test(rawValue)) {
-                                                setEmpBruto(Number(rawValue));
-                                            }
+                                            if (/^\d*$/.test(rawValue)) setEmpBruto(Number(rawValue));
                                         }}
                                     />
                                 </div>
@@ -239,7 +398,6 @@ export default function Home() {
                                     <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
                                         Neto (En mano) <span className="text-red-500">*</span>
                                     </label>
-                                    {/* Input con formato de miles */}
                                     <input 
                                         type="text"
                                         inputMode="numeric"
@@ -248,31 +406,68 @@ export default function Home() {
                                         value={empNeto > 0 ? empNeto.toLocaleString("es-AR") : ""}
                                         onChange={(e) => {
                                             const rawValue = e.target.value.replace(/\./g, "");
-                                            if (/^\d*$/.test(rawValue)) {
-                                                setEmpNeto(Number(rawValue));
-                                            }
+                                            if (/^\d*$/.test(rawValue)) setEmpNeto(Number(rawValue));
                                         }}
                                     />
                                 </div>
                             </div>
 
+                            {/* SELECTOR DE ZONA GEOGRÁFICA */}
                             <div>
-                                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
-                                    Categoría de Convenio <span className="text-red-500">*</span>
+                                <label className="block text-xs font-bold text-slate-700 uppercase mb-1 flex items-center gap-1">
+                                    <MapPin className="w-3 h-3" /> Zona del País <span className="text-red-500">*</span>
                                 </label>
                                 <select 
                                     className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none appearance-none text-sm cursor-pointer"
+                                    value={selectedZone}
+                                    onChange={(e) => setSelectedZone(Number(e.target.value))}
+                                >
+                                    {zones.map((z) => (
+                                        <option key={z.id} value={z.id}>{z.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* SELECTOR DE RUBRO (INDUSTRIA) */}
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                                    Rubro / Convenio <span className="text-red-500">*</span>
+                                </label>
+                                <select 
+                                    className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none appearance-none text-sm cursor-pointer"
+                                    value={selectedIndustryId}
+                                    onChange={(e) => {
+                                        setSelectedIndustryId(e.target.value);
+                                        setEmpCategory(""); // Resetear categoría al cambiar rubro
+                                    }}
+                                >
+                                    <option value="">Seleccioná tu rubro...</option>
+                                    {laborData.map((ind) => (
+                                        <option key={ind.id} value={ind.id}>{ind.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* SELECTOR DE CATEGORÍA (DINÁMICO) */}
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                                    Categoría <span className="text-red-500">*</span>
+                                </label>
+                                <select 
+                                    className="w-full p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none appearance-none text-sm cursor-pointer disabled:bg-slate-50 disabled:text-slate-400"
                                     value={empCategory}
                                     onChange={(e) => setEmpCategory(e.target.value)}
+                                    disabled={!selectedIndustryId}
                                 >
-                                    <option value="">Seleccioná tu categoría...</option>
-                                    {salaryCategories.map((cat) => (
+                                    <option value="">
+                                        {selectedIndustryId ? "Seleccioná tu categoría..." : "Primero elegí un rubro"}
+                                    </option>
+                                    {activeCategories.map((cat) => (
                                         <option key={cat.id} value={cat.id}>
-                                            {cat.label} ({formatMoney(cat.amount)})
+                                            {cat.label} ({formatMoney(cat.base)} { (cat.type || laborData.find(i=>i.id===selectedIndustryId)?.type) === 'hourly' ? '/ hora' : '/ mes' })
                                         </option>
                                     ))}
                                 </select>
-                                <p className="text-[10px] text-slate-400 mt-1">* Escalas estimadas Nov 2025 (Bolsillo).</p>
                             </div>
 
                             <Button 
@@ -306,12 +501,20 @@ export default function Home() {
                                 
                                 <p className="text-slate-600 leading-relaxed text-sm">
                                     {(() => {
-                                        const ref = salaryCategories.find(c => c.id === empCategory)?.amount || 0;
+                                        // Recalcular para el texto (esto es solo visualización)
+                                        const ind = laborData.find(i => i.id === selectedIndustryId);
+                                        const cat = ind?.categories.find(c => c.id === empCategory);
+                                        if(!cat || !ind) return "";
+
+                                        let base = cat.base;
+                                        if((cat.type || ind.type) === "hourly") base *= 176;
+                                        const theoretical = base * selectedZone * (1 + ind.presentismo) * 0.83;
+
                                         return empResult === 'bajo' 
-                                            ? `Según tu categoría, deberías estar cobrando aproximadamente ${formatMoney(ref)} en mano. Estás un ${Math.abs(empDiff).toFixed(1)}% abajo del convenio.` 
+                                            ? `Según tu categoría y zona, deberías cobrar aprox ${formatMoney(theoretical)} en mano. Estás un ${Math.abs(empDiff).toFixed(1)}% abajo.` 
                                             : empResult === 'acorde'
-                                            ? `Tu sueldo coincide con el convenio colectivo (${formatMoney(ref)} aprox).`
-                                            : `Estás cobrando un ${empDiff.toFixed(1)}% por encima del convenio básico. ¡Cuidá ese trabajo!`;
+                                            ? `Tu sueldo coincide con el convenio (${formatMoney(theoretical)} aprox).`
+                                            : `Estás cobrando un ${empDiff.toFixed(1)}% por encima del convenio.`;
                                     })()}
                                 </p>
                             </div>
@@ -326,7 +529,7 @@ export default function Home() {
         );
     }
 
-    // D. CALCULADORA DE PRECIOS (WIZARD DEFAULT)
+    // D. CALCULADORA DE PRECIOS (Wizard default)
     return (
         <div className="flex flex-col h-full animate-in fade-in duration-500">
             <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 bg-white/50 backdrop-blur-sm sticky top-0 z-10">
@@ -436,7 +639,6 @@ export default function Home() {
       </header>
 
       <main className="flex-1 flex items-center justify-center p-4">
-          {/* El contenedor principal ahora ajusta su altura dinámicamente */}
           <div className={`w-full max-w-5xl flex flex-col md:flex-row gap-6 ${viewState === 'employee-calculator' ? 'h-auto' : 'h-[80vh] md:h-[650px]'}`}>
               
               <div className="flex-1 bg-white rounded-[2rem] shadow-2xl shadow-slate-200/50 overflow-hidden border border-slate-100 relative flex flex-col ring-1 ring-black/5">
