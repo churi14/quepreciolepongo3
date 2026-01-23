@@ -1,4 +1,3 @@
-// components/CostCalculator.tsx
 "use client";
 
 import { useState } from "react";
@@ -49,6 +48,15 @@ export default function CostCalculator({ businessType, industry, onBack }: CostC
     { title: "Precio Final", subtitle: "Definí tu ganancia.", component: <PriceCalculator totalCost={totalCost} onPriceChange={(price, profit) => { setFinalPrice(price); setProfitAmount(profit); }} /> },
   ];
 
+  // --- VALIDACIÓN PARA AVANZAR ---
+  const isNextDisabled = () => {
+    // Si estamos en el paso 2 (Costos Fijos), obligamos a que el costo sea mayor a 0
+    if (calcStep === 2 && fixedCostPerUnit <= 0) {
+        return true; // Bloqueado
+    }
+    return false; // Habilitado
+  };
+
   return (
     <>
       {/* TARJETA PRINCIPAL (WIZARD) */}
@@ -86,7 +94,8 @@ export default function CostCalculator({ businessType, industry, onBack }: CostC
                 {calcStep < calculatorSteps.length - 1 && (
                      <Button 
                      size="sm"
-                     className="bg-black hover:bg-slate-800 text-white rounded-lg px-6 h-10 text-sm shadow-lg shadow-slate-200 hover:shadow-xl transition-all"
+                     disabled={isNextDisabled()} // <--- AQUÍ ESTÁ EL BLOQUEO
+                     className="bg-black hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-lg px-6 h-10 text-sm shadow-lg shadow-slate-200 hover:shadow-xl transition-all"
                      onClick={() => setCalcStep(calcStep + 1)}
                  >
                      Siguiente <ChevronRight className="ml-1 h-3 w-3" />

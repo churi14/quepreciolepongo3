@@ -9,10 +9,9 @@ interface FixedCostsProps {
 
 export default function FixedCosts({ onCostChange }: FixedCostsProps) {
   const [totalFixedMonthly, setTotalFixedMonthly] = useState(0);
-  const [estimatedUnits, setEstimatedUnits] = useState(100); // Default para evitar división por 0
+  const [estimatedUnits, setEstimatedUnits] = useState(100); 
 
   useEffect(() => {
-    // Calculamos cuánto "pesa" el costo fijo en cada unidad vendida
     if (estimatedUnits > 0) {
       const costPerUnit = totalFixedMonthly / estimatedUnits;
       onCostChange(costPerUnit);
@@ -24,13 +23,13 @@ export default function FixedCosts({ onCostChange }: FixedCostsProps) {
   return (
     <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
       
-      {/* Explicación Educativa (La nueva lógica de Mercado) */}
+      {/* Explicación Educativa */}
       <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-100 flex gap-3">
         <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0" />
         <div className="space-y-1">
             <p className="text-xs font-bold text-yellow-800">Cambio de Mentalidad:</p>
             <p className="text-xs text-yellow-700 leading-relaxed">
-            Los gastos fijos (Alquiler, Luz) son <strong>Gastos de Estructura</strong>, no costos del producto. 
+            Los gastos fijos (Alquiler, Luz) son <strong>Gastos de Estructura</strong>.
             El objetivo no es subir el precio para pagarlos, sino <strong>vender suficiente cantidad</strong> para diluirlos.
             </p>
         </div>
@@ -40,7 +39,7 @@ export default function FixedCosts({ onCostChange }: FixedCostsProps) {
         {/* 1. Gastos Totales */}
         <div>
             <label className="block text-xs font-bold text-slate-700 uppercase mb-2">
-                Gastos Fijos Mensuales ($ Total)
+                Gastos Fijos Mensuales ($ Total) <span className="text-red-500">*</span>
             </label>
             <div className="relative">
                 <Building className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
@@ -57,7 +56,7 @@ export default function FixedCosts({ onCostChange }: FixedCostsProps) {
         {/* 2. Ventas Estimadas */}
         <div>
             <label className="block text-xs font-bold text-blue-700 uppercase mb-2">
-                ¿Cuántas unidades vendés por mes?
+                ¿Cuántas unidades vendés por mes? <span className="text-red-500">*</span>
             </label>
             <div className="relative">
                 <Zap className="absolute left-3 top-3 h-5 w-5 text-blue-400" />
