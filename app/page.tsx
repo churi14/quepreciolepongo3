@@ -3,6 +3,14 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { User, Users, Utensils, Shirt, Zap, ShoppingBag, HelpCircle, Briefcase } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // COMPONENTES REFACTORIZADOS
 import WelcomeScreen from "@/components/WelcomeScreen";
@@ -12,8 +20,23 @@ import CostCalculator from "@/components/CostCalculator";
 export default function Home() {
   // --- ESTADO DEL FLUJO (Solo nos quedamos con esto en el archivo principal) ---
   const [viewState, setViewState] = useState<"welcome" | "profile-type" | "profile-industry" | "calculator" | "employee-calculator">("welcome");
-  const [businessType, setBusinessType] = useState(""); 
-  const [industry, setIndustry] = useState(""); 
+  const [businessType, setBusinessType] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
+  const handleGoHome = () => {
+    // Si no estamos en welcome, mostrar confirmación
+    if (viewState !== "welcome") {
+      setShowConfirmDialog(true);
+    }
+  };
+
+  const confirmGoHome = () => {
+    setShowConfirmDialog(false);
+    setViewState("welcome");
+    setBusinessType("");
+    setIndustry("");
+  }; 
 
   // --- RENDERIZADO ---
 
@@ -32,8 +55,14 @@ export default function Home() {
       
       {/* Header Global */}
       <header className="w-full p-6 md:px-10 flex justify-between items-center">
-           <img src="/logo.png" alt="Logo" className="h-8 md:h-10 w-auto object-contain" />
-           <button onClick={() => setViewState("welcome")} className="text-xs font-bold text-slate-400 hover:text-red-500 transition-colors uppercase tracking-wider">
+           <button
+             onClick={handleGoHome}
+             className="cursor-pointer hover:opacity-80 transition-opacity"
+             title="Volver al inicio"
+           >
+             <img src="/logo.png" alt="Logo" className="h-8 md:h-10 w-auto object-contain" />
+           </button>
+           <button onClick={handleGoHome} className="text-xs font-bold text-slate-400 hover:text-red-500 transition-colors uppercase tracking-wider">
                 Salir
            </button>
       </header>
@@ -129,6 +158,22 @@ export default function Home() {
                 </a>
             </div>
        </footer>
+
+       {/* Diálogo de Confirmación */}
+       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+         <AlertDialogContent>
+           <AlertDialogTitle>¿Volver al inicio?</AlertDialogTitle>
+           <AlertDialogDescription>
+             Si regresás al inicio, los datos que cargaste se perderán. ¿Estás seguro?
+           </AlertDialogDescription>
+           <div className="flex justify-end gap-3">
+             <AlertDialogCancel>Cancelar</AlertDialogCancel>
+             <AlertDialogAction onClick={confirmGoHome} className="bg-red-600 hover:bg-red-700">
+               Sí, volver al inicio
+             </AlertDialogAction>
+           </div>
+         </AlertDialogContent>
+       </AlertDialog>
 
     </div>
   );
